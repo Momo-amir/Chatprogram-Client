@@ -1,40 +1,51 @@
-﻿using System;
+using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-class Program
+namespace ChatClient
 {
-    static void Main(string[] args)
+    class Program
     {
-        // Connect to a remote host.
-        IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
-        int port = 8080;
-        TcpClient client = new TcpClient();
-        client.Connect(ipAddress, port);
-
-        // Send and receive data.
-        NetworkStream stream = client.GetStream();
-        Console.WriteLine("Connected to chat server. Enter your username:");
-        string username = Console.ReadLine();
-        byte[] data = Encoding.ASCII.GetBytes(username);
-        stream.Write(data, 0, data.Length);
-
-        // Start message loop.
-        Console.WriteLine("Enter messages to send to the chat room:");
-        while (true)
+        static void Main(string[] args)
         {
-            string message = Console.ReadLine();
-            data = Encoding.ASCII.GetBytes(message);
-            stream.Write(data, 0, data.Length);
-            data = new byte[256];
-            int bytes = stream.Read(data, 0, data.Length);
-            string responseData = Encoding.ASCII.GetString(data, 0, bytes);
-            Console.WriteLine(responseData);
+            Console.Write("Enter your username: ");
+            string username = Console.ReadLine();
+
+            TcpClient client = new TcpClient();
+            client.Connect("localhost", 1234);
+
+            NetworkStream stream = client.GetStream();
+
+            // Send the username to the server
+            byte[] usernameBuffer = Encoding.ASCII.GetBytes(username);
+            stream.Write(usernameBuffer, 0, usernameBuffer.Length);
+
+            // Start a new thread to handle server messages
+            System.Threading.Thread t = new System.Threading.Thread(() => HandleServerMessages(client));
+            t.Start();
+
+            // Read user input and send messages to the server
+            while (true)
+            {
+                string message = Console.ReadLine();
+                byte[] messageBuffer = Encoding.ASCII.GetBytes(message);
+                stream.Write(messageBuffer, 0, messageBuffer.Length);
+            }
         }
 
-        // Clean up.
-        stream.Close();
-        client.Close();
+        static void HandleServerMessages(TcpClient client)
+        {
+            NetworkStream stream = client.GetStream();
+
+            while (true)
+            {
+                byte[] buffer = new byte[client.ReceiveBufferSize];
+                int bytesRead = stream.Read(buffer, 0, client.ReceiveBufferSize);
+                string message = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                Console.WriteLine(message);
+            }
+        }
     }
 }
