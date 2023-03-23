@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Transactions;
 
 namespace ChatClient
 {
@@ -10,11 +11,23 @@ namespace ChatClient
     {
         static void Main(string[] args)
         {
-            Console.Write("Enter your username: ");
-            string username = Console.ReadLine();
+            string username;
+            IPAddress IP;
+            
+            // Prompt for username until it is not empty
+            do
+            {
+                Console.Write("Enter your username: ");
+                username = Console.ReadLine();
+            }
+            while (username == null || username == "");
 
+            // Prompt for IP address until it is a valid IP address
+            do Console.Write("Enter the IP address to connect to: ");
+            while (!IPAddress.TryParse(Console.ReadLine(), out IP));
+            
             TcpClient client = new TcpClient();
-            client.Connect("localhost", 1234);
+            client.Connect(IP, 1234);
 
             NetworkStream stream = client.GetStream();
 
@@ -39,6 +52,7 @@ namespace ChatClient
         {
             NetworkStream stream = client.GetStream();
 
+            // Listen for incoming messages forwarded by the server
             while (true)
             {
                 byte[] buffer = new byte[client.ReceiveBufferSize];
